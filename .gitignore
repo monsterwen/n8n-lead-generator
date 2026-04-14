@@ -1,0 +1,22 @@
+# Credentials (never commit real keys)
+config/credentials.json
+*.env
+.env.*
+
+# n8n data
+.n8n/
+*.sqlite
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+
+# Node
+node_modules/
+
+# Logs
+*.log

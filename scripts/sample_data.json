@@ -1,0 +1,100 @@
+{
+  "description": "Sample lead data for testing the n8n Lead Generation workflows",
+  "leads": [
+    {
+      "company_name": "TechFlow Solutions",
+      "industry": "SaaS / Cloud Computing",
+      "website": "https://techflow-example.com",
+      "employee_count": 150,
+      "location": "San Francisco, CA",
+      "country": "US",
+      "description": "Cloud-native workflow automation platform helping mid-market companies streamline their operations. Series B funded with strong growth metrics.",
+      "founded_year": 2019,
+      "revenue_range": "$10M-$50M",
+      "contact_email": "partnerships@techflow-example.com",
+      "phone": "+1-555-0101",
+      "linkedin_url": "https://linkedin.com/company/techflow-example",
+      "decision_makers": [
+        { "name": "Sarah Chen", "title": "VP of Sales", "email": "sarah@techflow-example.com" },
+        { "name": "James Rodriguez", "title": "CTO", "email": "james@techflow-example.com" }
+      ]
+    },
+    {
+      "company_name": "DataBridge Analytics",
+      "industry": "Data & Analytics",
+      "website": "https://databridge-example.com",
+      "employee_count": 85,
+      "location": "Austin, TX",
+      "country": "US",
+      "description": "Business intelligence platform specializing in real-time analytics for e-commerce companies. Recently expanded to European markets.",
+      "founded_year": 2020,
+      "revenue_range": "$5M-$10M",
+      "contact_email": "hello@databridge-example.com",
+      "phone": "+1-555-0102",
+      "linkedin_url": "https://linkedin.com/company/databridge-example",
+      "decision_makers": [
+        { "name": "Alex Kim", "title": "CEO", "email": "alex@databridge-example.com" }
+      ]
+    },
+    {
+      "company_name": "GreenScale Energy",
+      "industry": "CleanTech / Energy",
+      "website": "https://greenscale-example.com",
+      "employee_count": 320,
+      "location": "Denver, CO",
+      "country": "US",
+      "description": "Smart energy management solutions for commercial buildings. IoT-driven platform reducing energy consumption by up to 40%. Series C company with Fortune 500 clients.",
+      "founded_year": 2017,
+      "revenue_range": "$50M-$100M",
+      "contact_email": "business@greenscale-example.com",
+      "phone": "+1-555-0103",
+      "linkedin_url": "https://linkedin.com/company/greenscale-example",
+      "decision_makers": [
+        { "name": "Maria Santos", "title": "Head of Partnerships", "email": "maria@greenscale-example.com" },
+        { "name": "David Park", "title": "VP of Business Development", "email": "david@greenscale-example.com" },
+        { "name": "Lisa Thompson", "title": "CFO", "email": "lisa@greenscale-example.com" }
+      ]
+    },
+    {
+      "company_name": "SecureNet Pro",
+      "industry": "Cybersecurity",
+      "website": "https://securenetpro-example.com",
+      "employee_count": 200,
+      "location": "Boston, MA",
+      "country": "US",
+      "description": "Enterprise cybersecurity platform providing zero-trust network access and threat detection for financial institutions.",
+      "founded_year": 2018,
+      "revenue_range": "$20M-$50M",
+      "contact_email": "sales@securenetpro-example.com",
+      "phone": "+1-555-0104",
+      "linkedin_url": "https://linkedin.com/company/securenetpro-example",
+      "decision_makers": [
+        { "name": "Robert Chen", "title": "CISO", "email": "robert@securenetpro-example.com" }
+      ]
+    },
+    {
+      "company_name": "HealthPulse AI",
+      "industry": "HealthTech",
+      "website": "https://healthpulse-example.com",
+      "employee_count": 60,
+      "location": "New York, NY",
+      "country": "US",
+      "description": "AI-powered patient engagement platform for healthcare providers. Seed stage startup with rapid user growth.",
+      "founded_year": 2022,
+      "revenue_range": "$1M-$5M",
+      "contact_email": "info@healthpulse-example.com",
+      "phone": "",
+      "linkedin_url": "",
+      "decision_makers": []
+    }
+  ],
+  "test_webhook_payload": {
+    "event_type": "new_lead",
+    "company_name": "TechFlow Solutions",
+    "industry": "SaaS / Cloud Computing",
+    "website": "https://techflow-example.com",
+    "employee_count": 150,
+    "lead_score": 85,
+    "quality_tier": "hot"
+  }
+}

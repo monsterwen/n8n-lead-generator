@@ -1,0 +1,247 @@
+{
+  "name": "Lead Enrichment - AI-Powered Analysis",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "enrich-lead",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "webhook-trigger",
+      "name": "Webhook: New Lead",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [220, 300],
+      "webhookId": "lead-enrichment-webhook"
+    },
+    {
+      "parameters": {
+        "url": "https://api.apollo.io/v1/people/match",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "organization_name",
+              "value": "={{ $json.company_name }}"
+            },
+            {
+              "name": "domain",
+              "value": "={{ $json.website }}"
+            }
+          ]
+        },
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "json"
+            }
+          }
+        }
+      },
+      "id": "http-enrichment-api",
+      "name": "Enrich via Apollo API",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [440, 200]
+    },
+    {
+      "parameters": {
+        "url": "https://api.clearbit.com/v2/companies/find",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "domain",
+              "value": "={{ $json.website }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "http-clearbit",
+      "name": "Clearbit Company Lookup",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [440, 420]
+    },
+    {
+      "parameters": {
+        "jsCode": "const apolloData = $('Enrich via Apollo API').first().json;\nconst clearbitData = $('Clearbit Company Lookup').first().json;\nconst originalLead = $('Webhook: New Lead').first().json;\n\nconst enriched = {\n  ...originalLead,\n  \n  // Apollo enrichment\n  decision_makers: apolloData.people ? apolloData.people.slice(0, 5).map(p => ({\n    name: p.name,\n    title: p.title,\n    email: p.email,\n    linkedin: p.linkedin_url\n  })) : [],\n  \n  // Clearbit enrichment\n  tech_stack: clearbitData.tech || [],\n  funding_total: clearbitData.metrics?.raised || 'Unknown',\n  annual_revenue: clearbitData.metrics?.annualRevenue || 'Unknown',\n  company_type: clearbitData.type || 'Unknown',\n  twitter_followers: clearbitData.twitter?.followers || 0,\n  \n  // Enrichment metadata\n  enriched_at: new Date().toISOString(),\n  enrichment_sources: ['apollo', 'clearbit'],\n  enrichment_status: 'completed'\n};\n\nreturn [{ json: enriched }];"
+      },
+      "id": "merge-enrichment",
+      "name": "Merge Enrichment Data",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [700, 300]
+    },
+    {
+      "parameters": {
+        "url": "https://api.anthropic.com/v1/messages",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "method": "POST",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"model\": \"claude-sonnet-4-6-20250514\",\n  \"max_tokens\": 1024,\n  \"messages\": [\n    {\n      \"role\": \"user\",\n      \"content\": \"Analyze this lead and provide a qualification score (1-100), recommended action, and key insights. Return JSON format.\\n\\nCompany: {{ $json.company_name }}\\nIndustry: {{ $json.industry }}\\nEmployees: {{ $json.employee_count }}\\nRevenue: {{ $json.annual_revenue }}\\nFunding: {{ $json.funding_total }}\\nTech Stack: {{ $json.tech_stack }}\\nDecision Makers Found: {{ $json.decision_makers.length }}\\nDescription: {{ $json.description }}\"\n    }\n  ]\n}",
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "json"
+            }
+          }
+        }
+      },
+      "id": "claude-ai-analysis",
+      "name": "Claude AI Lead Analysis",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [940, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "const enrichedLead = $('Merge Enrichment Data').first().json;\nconst aiResponse = $input.first().json;\n\nlet aiAnalysis;\ntry {\n  const content = aiResponse.content[0].text;\n  aiAnalysis = JSON.parse(content);\n} catch (e) {\n  aiAnalysis = {\n    score: 50,\n    action: 'manual_review',\n    insights: 'AI analysis parsing failed - manual review needed'\n  };\n}\n\nconst finalLead = {\n  ...enrichedLead,\n  ai_score: aiAnalysis.score || 50,\n  ai_recommended_action: aiAnalysis.action || 'review',\n  ai_insights: aiAnalysis.insights || '',\n  ai_buying_signals: aiAnalysis.buying_signals || [],\n  ai_risk_factors: aiAnalysis.risk_factors || [],\n  \n  // Final composite score (weighted)\n  final_score: Math.round(\n    (enrichedLead.lead_score * 0.4) + (aiAnalysis.score * 0.6)\n  ),\n  \n  // Final tier\n  final_tier: '',\n  processed_at: new Date().toISOString()\n};\n\nfinalLead.final_tier = finalLead.final_score >= 75 ? 'high_priority' \n  : finalLead.final_score >= 50 ? 'medium_priority' \n  : 'low_priority';\n\nreturn [{ json: finalLead }];"
+      },
+      "id": "code-final-score",
+      "name": "Calculate Final Score",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1160, 300]
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "documentId": {
+          "__rl": true,
+          "mode": "list",
+          "value": "YOUR_SPREADSHEET_ID"
+        },
+        "sheetName": {
+          "__rl": true,
+          "mode": "list",
+          "value": "Leads"
+        },
+        "columns": {
+          "mappingMode": "autoMapInputData",
+          "value": {}
+        },
+        "options": {
+          "cellFormat": "USER_ENTERED"
+        }
+      },
+      "id": "google-sheets-update",
+      "name": "Update Google Sheets",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [1380, 300]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "conditions": [
+            {
+              "leftValue": "={{ $json.final_tier }}",
+              "rightValue": "high_priority",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ]
+        }
+      },
+      "id": "if-high-priority",
+      "name": "Is High Priority?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [1600, 300]
+    },
+    {
+      "parameters": {
+        "channel": "#sales-high-priority",
+        "text": ":rotating_light: *HIGH PRIORITY LEAD - Immediate Action Required*\n\n*Company:* {{ $json.company_name }}\n*Final Score:* {{ $json.final_score }}/100\n*AI Recommendation:* {{ $json.ai_recommended_action }}\n\n*Key Insights:*\n{{ $json.ai_insights }}\n\n*Decision Makers:*\n{{ $json.decision_makers.map(d => '- ' + d.name + ' (' + d.title + ')').join('\\n') }}\n\n*Next Steps:* Review and assign to sales rep within 24 hours.",
+        "otherOptions": {}
+      },
+      "id": "slack-high-priority",
+      "name": "Urgent Slack Alert",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.2,
+      "position": [1820, 200]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({ status: 'success', lead_id: $json.company_name, final_score: $json.final_score, tier: $json.final_tier }) }}"
+      },
+      "id": "webhook-response",
+      "name": "Respond to Webhook",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [1820, 400]
+    }
+  ],
+  "connections": {
+    "Webhook: New Lead": {
+      "main": [
+        [
+          { "node": "Enrich via Apollo API", "type": "main", "index": 0 },
+          { "node": "Clearbit Company Lookup", "type": "main", "index": 0 }
+        ]
+      ]
+    },
+    "Enrich via Apollo API": {
+      "main": [
+        [{ "node": "Merge Enrichment Data", "type": "main", "index": 0 }]
+      ]
+    },
+    "Clearbit Company Lookup": {
+      "main": [
+        [{ "node": "Merge Enrichment Data", "type": "main", "index": 0 }]
+      ]
+    },
+    "Merge Enrichment Data": {
+      "main": [
+        [{ "node": "Claude AI Lead Analysis", "type": "main", "index": 0 }]
+      ]
+    },
+    "Claude AI Lead Analysis": {
+      "main": [
+        [{ "node": "Calculate Final Score", "type": "main", "index": 0 }]
+      ]
+    },
+    "Calculate Final Score": {
+      "main": [
+        [{ "node": "Update Google Sheets", "type": "main", "index": 0 }]
+      ]
+    },
+    "Update Google Sheets": {
+      "main": [
+        [{ "node": "Is High Priority?", "type": "main", "index": 0 }]
+      ]
+    },
+    "Is High Priority?": {
+      "main": [
+        [
+          { "node": "Urgent Slack Alert", "type": "main", "index": 0 },
+          { "node": "Respond to Webhook", "type": "main", "index": 0 }
+        ],
+        [
+          { "node": "Respond to Webhook", "type": "main", "index": 0 }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "saveManualExecutions": true
+  },
+  "tags": [
+    { "name": "lead-enrichment" },
+    { "name": "ai-powered" },
+    { "name": "webhook" }
+  ]
+}

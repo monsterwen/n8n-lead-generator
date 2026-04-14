@@ -1,0 +1,153 @@
+{
+  "name": "Lead Notification Hub - Multi-Channel Alerts",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "lead-notification",
+        "responseMode": "lastNode",
+        "options": {}
+      },
+      "id": "webhook-notify",
+      "name": "Webhook: Lead Event",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [220, 300],
+      "webhookId": "notification-webhook"
+    },
+    {
+      "parameters": {
+        "rules": {
+          "rules": [
+            {
+              "outputIndex": 0,
+              "conditions": {
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.event_type }}",
+                    "rightValue": "new_lead",
+                    "operator": { "type": "string", "operation": "equals" }
+                  }
+                ]
+              }
+            },
+            {
+              "outputIndex": 1,
+              "conditions": {
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.event_type }}",
+                    "rightValue": "lead_scored",
+                    "operator": { "type": "string", "operation": "equals" }
+                  }
+                ]
+              }
+            },
+            {
+              "outputIndex": 2,
+              "conditions": {
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.event_type }}",
+                    "rightValue": "daily_summary",
+                    "operator": { "type": "string", "operation": "equals" }
+                  }
+                ]
+              }
+            }
+          ]
+        }
+      },
+      "id": "switch-event",
+      "name": "Route by Event Type",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3,
+      "position": [460, 300]
+    },
+    {
+      "parameters": {
+        "channel": "#leads-new",
+        "text": ":new: *New Lead Added*\n\n*{{ $json.company_name }}* | {{ $json.industry }}\nEmployees: {{ $json.employee_count }} | Score: {{ $json.lead_score }}/100\n{{ $json.website }}",
+        "otherOptions": {}
+      },
+      "id": "slack-new-lead",
+      "name": "Slack: New Lead",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.2,
+      "position": [720, 160]
+    },
+    {
+      "parameters": {
+        "channel": "#leads-scored",
+        "text": ":chart_with_upwards_trend: *Lead Scored*\n\n*{{ $json.company_name }}*\nAI Score: {{ $json.ai_score }}/100 | Final: {{ $json.final_score }}/100\nTier: {{ $json.final_tier }}\nAction: {{ $json.ai_recommended_action }}",
+        "otherOptions": {}
+      },
+      "id": "slack-scored",
+      "name": "Slack: Lead Scored",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.2,
+      "position": [720, 320]
+    },
+    {
+      "parameters": {
+        "fromEmail": "automation@yourcompany.com",
+        "toEmail": "sales-team@yourcompany.com",
+        "subject": "Daily Lead Generation Summary - {{ $json.date }}",
+        "emailType": "html",
+        "html": "<h2>Daily Lead Summary</h2><p><strong>Date:</strong> {{ $json.date }}</p><table style='border-collapse:collapse;width:100%;margin-top:16px'><tr style='background:#f8f9fa'><td style='padding:12px;border:1px solid #dee2e6'><strong>Total Leads</strong></td><td style='padding:12px;border:1px solid #dee2e6'>{{ $json.total_leads }}</td></tr><tr><td style='padding:12px;border:1px solid #dee2e6'><strong>Hot Leads</strong></td><td style='padding:12px;border:1px solid #dee2e6;color:#dc3545'>{{ $json.hot_leads }}</td></tr><tr style='background:#f8f9fa'><td style='padding:12px;border:1px solid #dee2e6'><strong>Warm Leads</strong></td><td style='padding:12px;border:1px solid #dee2e6;color:#ffc107'>{{ $json.warm_leads }}</td></tr><tr><td style='padding:12px;border:1px solid #dee2e6'><strong>Avg Score</strong></td><td style='padding:12px;border:1px solid #dee2e6'>{{ $json.avg_score }}/100</td></tr></table>",
+        "options": {}
+      },
+      "id": "email-daily-summary",
+      "name": "Email: Daily Summary",
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2.1,
+      "position": [720, 480]
+    },
+    {
+      "parameters": {
+        "jsCode": "return [{ json: { status: 'notification_sent', event: $('Webhook: Lead Event').first().json.event_type, timestamp: new Date().toISOString() } }];"
+      },
+      "id": "response-builder",
+      "name": "Build Response",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [960, 300]
+    }
+  ],
+  "connections": {
+    "Webhook: Lead Event": {
+      "main": [
+        [{ "node": "Route by Event Type", "type": "main", "index": 0 }]
+      ]
+    },
+    "Route by Event Type": {
+      "main": [
+        [{ "node": "Slack: New Lead", "type": "main", "index": 0 }],
+        [{ "node": "Slack: Lead Scored", "type": "main", "index": 0 }],
+        [{ "node": "Email: Daily Summary", "type": "main", "index": 0 }]
+      ]
+    },
+    "Slack: New Lead": {
+      "main": [
+        [{ "node": "Build Response", "type": "main", "index": 0 }]
+      ]
+    },
+    "Slack: Lead Scored": {
+      "main": [
+        [{ "node": "Build Response", "type": "main", "index": 0 }]
+      ]
+    },
+    "Email: Daily Summary": {
+      "main": [
+        [{ "node": "Build Response", "type": "main", "index": 0 }]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "tags": [
+    { "name": "notifications" },
+    { "name": "multi-channel" }
+  ]
+}
